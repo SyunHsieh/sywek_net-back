@@ -1,0 +1,29 @@
+runtime: python37
+default_expiration: "2d"
+entrypoint: gunicorn -b :$PORT main:app
+
+instance_class: F1
+
+automatic_scaling:
+  target_cpu_utilization: 0.75
+  min_instances: 0
+  max_instances: 3
+  min_pending_latency: 30ms
+  max_pending_latency: automatic
+  max_concurrent_requests: 50
+
+#vpc_access_connector:
+#  name: "projects/sywek-website/locations/asia-northeast2/connectors/sywek-serverlessvpc-tokyo"
+
+handlers:
+- url: /.*
+  secure: always
+  redirect_http_response_code: 301
+  script: auto
+  
+#beta_settings:#public cloud sql
+#  cloud_sql_instances: flask-web-278815:asia-east1:syun-postgre-0917
+
+#network:
+#  name: projects/flask-web-278815/global/networks/vpc-net
+#  subnetwork_name : asia-northeast1-tokyo

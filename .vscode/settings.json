@@ -1,0 +1,33 @@
+{
+  "python.linting.pylintPath": "${workspaceRoot}/venv/Scripts/pylint",
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": true,
+  // "python.linting.pylintArgs": [
+  //     "--disable = W0614"
+  // ],
+  "sqltools.connections": [
+    {
+      "askForPassword": false,
+      "database": "sywek",
+      "driver": "PostgreSQL",
+      "name": "localhost",
+      "password": "KBH76kng79865BHKh5Ukb8ytvI864F",
+      "port": 5432,
+      "previewLimit": 50,
+      "server": "localhost",
+      "username": "sywek-client01"
+    },
+    {
+      "askForPassword": false,
+      "database": "sywek-SID",
+      "driver": "PostgreSQL",
+      "name": "localhost-sid",
+      "password": "KBH76kng79865BHKh5Ukb8ytvI864F",
+      "port": 5432,
+      "previewLimit": 50,
+      "server": "localhost",
+      "username": "sywek-client01"
+    }
+  ],
+  "sqltools.useNodeRuntime": true //ignore pylint 'unused parameters warring.'
+}

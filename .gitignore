@@ -1,0 +1,6 @@
+venv/
+instance/
+*.pyc
+*egg-info/
+*pytest/
+config.py

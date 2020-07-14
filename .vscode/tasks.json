@@ -1,0 +1,52 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Debug Server",
+      "type": "shell",
+      "command": "${workspaceRoot}/.venv/Scripts/flask run -h 0.0.0.0 -p 5000",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Gloud Deploy to app engine",
+
+      "type": "shell",
+      "command": "gcloud app deploy"
+    },
+    {
+      "label": "Dokcer build image",
+      "type": "shell",
+      "command": "docker build -t sywek-web:1.0.2 .",
+      "problemMatcher": []
+    },
+    {
+      "label": "Dokcer Full rebuild image",
+      "type": "shell",
+      "command": "docker build -t sywek-web:1.0.2 . --no-cache",
+      "problemMatcher": []
+    },
+    {
+      "label": "Dokcer run new container",
+      "type": "shell",
+      "command": "docker run -ti -p 5432:5432 -p 5000:5000 sywek-web:1",
+      "problemMatcher": []
+    },
+    {
+      "label": "Dokcer remove all container",
+      "type": "shell",
+      "command": "docker rm -f $(docker ps -a -q)",
+      "problemMatcher": []
+    },
+    {
+      "label": "Dokcer Start Postgresql",
+      "type": "shell",
+      "command": "docker run --name pgtest -p 5432:5432 -e POSTGRES_PASSWORD=test -v sywek-pg:/var/lib/postgresql/data -d postgres",
+      "problemMatcher": []
+    }
+  ]
+}
