@@ -1,5 +1,6 @@
-from flask import Flask, redirect, url_for, session, jsonify,request
-# from flask_session import Session
+from flask import Flask, redirect, url_for, session, jsonify, request, g, render_template, send_from_directory
+from flask_session import Session
+from .db import close_db
 # from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 
@@ -9,17 +10,24 @@ import os
 def Create_app(test_config=None, renew_database=False):
 
     def _registerBP(flaskApp):
-        from .blueprint.article.article_bp import bp as articleBP
+        # from .blueprint.article.article_bp import bp as articleBP
+        # from .blueprint.user_bp import bp as userBP
+        # from .blueprint.session_bp import bp as sessionBP
         # CORS(articleBP, resources={r"/*": {"origins": "*"}})#enable cors with blueprint
-        flaskApp.register_blueprint(articleBP, url_prefix='/article')
-
-    app = Flask(__name__, instance_relative_config=True)
+        # flaskApp.register_blueprint(articleBP, url_prefix='/article')
+        # flaskApp.register_blueprint(userBP,url_prefix='/user')
+        # flaskApp.register_blueprint(sessionBP,url_prefix='/session')
+        from .blueprint.api_bp import bp as apiBP
+        flaskApp.register_blueprint(apiBP, url_prefix='/api')
+    app = Flask(__name__, instance_relative_config=True, static_folder="./dist",
+                template_folder="./dist")
 
     # append flask cors
 
-    #app.config['CORS_HEADERS'] = 'Content-Type'
- 
-    cors = CORS(app, resources={r"/*": {"origins": "*"}})
+    # app.config['CORS_HEADERS'] = 'Content-Type'
+
+    cors = CORS(app, resources={
+                r"/*": {"origins": "*"}}, supports_credentials=True)
 
     app.config.from_object('config')
     if test_config is None:
@@ -37,12 +45,15 @@ def Create_app(test_config=None, renew_database=False):
 
     @app.route('/')
     def routes_index():
-        return 'default'
+        return render_template("index.html")
         #return redirect(url_for('blog.routes_blogIndex')) #this was not good  redirect 3 times.#################
 
+    @app.route('/<path:path>')
+    def routes_jsFile(path):
+        print(path)
+        return send_from_directory('./dist/', path)
 
-
-    @app.route('/test/<postId>',methods=['GET','POST'])
+    @app.route('/test/<postId>', methods=['GET', 'POST'])
     def routes_apitetst(postId):
         print(request.get_json())
         return 'id'+postId
@@ -59,11 +70,18 @@ def Create_app(test_config=None, renew_database=False):
 
     # from flask_sqlalchemy import SQLAlchemy
     # db = SQLAlchemy(app)
-    # session = Session(app)
+    session = Session(app)
 
-    # session.app.session_interface.db.drop_all()
-    # session.app.session_interface.db.create_all()
+    session.app.session_interface.db.drop_all()
+    session.app.session_interface.db.create_all()
 
-    #from flask_talisman import Talisman
+    @app.teardown_request
+    def teardown_app_request(e=None):
+        close_db()
+
+    @app.errorhandler(Exception)
+    def flask_errorhandler(e):
+        return 'error!!!'
+    # from flask_talisman import Talisman
     # Talisman(app)
     return app

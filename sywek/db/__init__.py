@@ -24,10 +24,11 @@ def get_db():
 
 
 def close_db():
+
     db = g.pop('db', None)
 
-    if db is not None:
-        db.close()
+    # if db is not None:
+    #     db.close()
 
 
 # article_likes_table = _db.Table('article_likes_table', _db.Column('user_id', _db.Integer, _db.ForeignKey('user_info_table.id')), _db.Column(
@@ -53,10 +54,11 @@ class user_info_table(_db.Model):
     passwordHash = _db.Column(_db.String(128), nullable=False)  # sha512
     salt = _db.Column(_db.String(32), nullable=False)
     socialInfo = _db.Column(JSON(), nullable=False)
-    verifyAccount = _db.Column(_db.Boolean, default = False)
-    followersCount = _db.Column(BIGINT , default = 0)
+    verifyAccount = _db.Column(_db.Boolean, default=False)
+    followersCount = _db.Column(BIGINT, default=0)
     userImage = _db.Column(JSON(), nullable=True)
-    createDT = _db.Column(_db.DateTime,nullable=False, default=datetime.utcnow)
+    createDT = _db.Column(_db.DateTime, nullable=False,
+                          default=datetime.utcnow)
 
     # relation
     rs_posts_dy = _db.relationship(
@@ -76,7 +78,7 @@ class oauth_table(_db.Model):
         'user_info_table.id'), nullable=False)
     google = _db.Column(_db.String(256), unique=True, nullable=True)
     github = _db.Column(_db.String(256), unique=True, nullable=True)
-
+    twitter = _db.Column(_db.String(256), unique=True, nullable=True)
     # relation
     rs_user = _db.relationship('user_info_table', uselist=False, lazy=True)
 
@@ -96,6 +98,7 @@ class articles_table(_db.Model):
     commentsCount = _db.Column(BIGINT, default=0)
     lastEditDT = _db.Column(_db.DateTime, nullable=False,
                             default=datetime.utcnow)
+    isOpened = _db.Column(_db.Boolean, nullable=False, default=False)
     # relation
     rs_likes_dy = _db.relationship('post_likes_table', lazy='dynamic')
     rs_comment_dy = _db.relationship('post_comments_table', lazy='dynamic')

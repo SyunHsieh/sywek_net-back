@@ -1,14 +1,15 @@
-from .db import user_info_table, get_db , follows_table , articles_table
+from .db import user_info_table, get_db, follows_table, articles_table
 from datetime import datetime
 import hashlib
 from sqlalchemy.orm import load_only
 import random
 import re
 
+
 class User():
     @classmethod
-    def getUserByAccount(cls,account):
-        _user = user_info_table.query.filter_by(account = account).first()
+    def getUserByAccount(cls, account):
+        _user = user_info_table.query.filter_by(account=account).first()
 
         if _user is None:
             return None
@@ -16,7 +17,7 @@ class User():
             return User(sqlInstance=_user)
 
     @classmethod
-    def IsAccountExist(cls,account):
+    def IsAccountExist(cls, account):
         if user_info_table.query.filter_by(account=account).first() is None:
             return False
         else:
@@ -29,13 +30,15 @@ class User():
         if sqlInstance is None:  # not from instance then load data from sql_table.
             if userId is not None:
                 if loadInfo:
-                    self._userData = user_info_table.query.options(load_only('id', 'name', 'socialInfo', 'followersCount', 'userImage')).filter_by(id=userId).first()
+                    self._userData = user_info_table.query.options(load_only(
+                        'id', 'name', 'socialInfo', 'followersCount', 'userImage')).filter_by(id=userId).first()
                 else:
-                    self._userData = user_info_table.query.filter_by(id=userId).first()
+                    self._userData = user_info_table.query.filter_by(
+                        id=userId).first()
 
             if self._userData is None:  # none means userId not exist in database or userId is None
                 self._userData = user_info_table()
-            else:   
+            else:
                 self.isSearchingInDB = True
         else:
             self.isSearchingInDB = True
@@ -52,7 +55,7 @@ class User():
         self.userImage = self._userData.userImage
         self.socialInfo = self._userData.socialInfo
         self.followersCount = self._userData.followersCount
-        
+
         if self.isInfoOnly:
             self.account = None
             self.passwordHash = None
@@ -81,23 +84,25 @@ class User():
         self._userData.socialInfo = self.socialInfo
         self._userData.userImage = self.userImage
         self._userData.followersCount = self.followersCount
-        
+
     def commit(self):
         if not self._validateData():
-            return (False , 'Data validate failed')
+            return (False, 'Data validate failed')
         if User.IsAccountExist(self.account):
-            return (False,'Account is exist.')
+            return (False, 'Account is exist.')
 
         _db = get_db()
         self.mappingDataToSqlInstance()
-        
+
         if self.isSearchingInDB == False:
             _db.session.add(self._userData)
 
         _db.session.commit()
-        return (True,'')
+        self._mappingParams()
+        return (True, 'Successed')
+
     def setPasswordHashAndSalt(self, password):
-        if not re.match(r'[A-Za-z0-9@#$%^&+=]{8,36}',password):
+        if not re.fullmatch(r'[A-Za-z0-9@#$%^&+=]{8,32}', password):
             return False
 
         def _getSalt():
@@ -110,31 +115,34 @@ class User():
         sha512 = hashlib.sha512((password+self.salt).encode('utf-8'))
         self.passwordHash = sha512.hexdigest()
         return True
+
     def getArticlesInfo(self, count=1, offset=0):
         from .Article import Article
         if count <= 0:
             return None
 
-        _articles = self.rs_posts_query.options(\
-            load_only('id', 'author_id', 'header', 'secondHeader', 'headerImage', 'postDT','tags', 'likesCount', 'commentsCount'))\
-                .order_by(articles_table.postDT.desc()).limit(count).offset(offset).all()
+        _articles = self.rs_posts_query.options(
+            load_only('id', 'author_id', 'header', 'secondHeader', 'headerImage', 'postDT', 'tags', 'likesCount', 'commentsCount'))\
+            .order_by(articles_table.postDT.desc()).limit(count).offset(offset).all()
         if _articles is not None:
-            return [Article(loadInfo=True,sqlInstance=row) for row in _articles]
+            return [Article(loadInfo=True, sqlInstance=row) for row in _articles]
         else:
             return None
 
     def searchLike(self, article):
-        return self.rs_likes_query.filter_by(post_id = article.id).first()
+        return self.rs_likes_query.filter_by(post_id=article.id).first()
 
     def searchFollow(self, targetUser):
-        return self.rs_follows_query.filter_by(followUser_id = targetUser.id).first()
-    def validatePassword(self,password):
-       return self.passwordHash == hashlib.sha512((password+self.salt).encode('utf-8')).hexdigest()
-    def setFollower(self,targetFollower,followFlag):
+        return self.rs_follows_query.filter_by(followUser_id=targetUser.id).first()
+
+    def validatePassword(self, password):
+        return self.passwordHash == hashlib.sha512((password+self.salt).encode('utf-8')).hexdigest()
+
+    def setFollower(self, targetFollower, followFlag):
         _ret = {
-            'type':'follower',
-            'currentStatus':None,
-            'msg':'Failed'
+            'type': 'follower',
+            'currentStatus': None,
+            'msg': 'Failed'
         }
         if not self.isSearchingInDB or not targetFollower.isSearchingInDB:
             return _ret
@@ -143,25 +151,27 @@ class User():
         _fwRow = self.searchFollow(targetFollower)
         if followFlag:
             if _fwRow is None:
-                _follow = follows_table(user_id= self.id,followUser_id = targetFollower.id)
+                _follow = follows_table(
+                    user_id=self.id, followUser_id=targetFollower.id)
                 _db.session.add(_follow)
-                targetFollower.followersCount+=1
+                targetFollower.followersCount += 1
                 targetFollower.mappingDataToSqlInstance()
                 _db.session.commit()
-                
+
             _ret['currentStatus'] = True
             _ret['msg'] = 'Successed'
         else:
             if _fwRow is not None:
                 _db.session.delete(_fwRow)
-                targetFollower.followersCount-=1
+                targetFollower.followersCount -= 1
                 targetFollower.mappingDataToSqlInstance()
                 _db.session.commit()
-                
+
             _ret['currentStatus'] = False
             _ret['msg'] = 'Successed'
 
         return _ret
+
     def _validateData(self):
         # account rules
         # password rules
@@ -170,13 +180,22 @@ class User():
         # image rules
         # name rules
         # return flase or true
-        if not self.isInfoOnly:  
-            if not re.match(r'^\w+((-\w+)|(\.\w+))*\@[A-Za-z0-9]+((\.|-)[A-Za-z0-9]+)*\.[A-Za-z]+$', self.account) or \
-                len(self.passwordHash) != 128 or len(self.salt) != 32 :
+        if not self.isInfoOnly:
+            if not re.fullmatch(r'^\w+((-\w+)|(\.\w+))*\@[A-Za-z0-9]+((\.|-)[A-Za-z0-9]+)*\.[A-Za-z]+$', self.account) or \
+                    len(self.passwordHash) != 128 or len(self.salt) != 32:
                 return False
 
-        if not re.match(r'[a-z0-9A-Z ]{3,64}',self.name):
+        if not re.fullmatch(r'[a-z0-9A-Z ]{3,64}', self.name):
             return False
 
         return True
 
+    @classmethod
+    def verifyData(cls, account, password, name):
+        if not re.fullmatch(r'^\w+((-\w+)|(\.\w+))*\@[A-Za-z0-9]+((\.|-)[A-Za-z0-9]+)*\.[A-Za-z]+$', account):
+            return False
+        if not re.fullmatch(r'[A-Za-z0-9@#$%^&+=]{8,32}', password):
+            return False
+        if not re.fullmatch(r'[a-z0-9A-Z ]{3,64}', name):
+            return False
+        return True

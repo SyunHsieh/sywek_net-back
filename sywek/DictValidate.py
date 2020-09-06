@@ -1,6 +1,8 @@
 def validateDict(obj , keys):
             if type(obj) is not dict:
                 return False
+
+            _objKeys = obj.keys()
             for i in keys:
                 if(type(i) is dict):
                     for key,values in i.items():
@@ -15,7 +17,7 @@ def validateDict(obj , keys):
                                 return False
 
                 else:
-                    if not obj.get(i):
+                    if not i in _objKeys:
                         return False
             return True
         
