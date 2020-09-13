@@ -354,8 +354,7 @@ class Article():
         return _jsonArticle
 
     def deleteArticle(self, user):
-        if self.author.id != user.id:
-            return (False, 'Not article owner.')
+
         if not self.isSearchingInDB:
             return (False, 'Article not exist.')
 

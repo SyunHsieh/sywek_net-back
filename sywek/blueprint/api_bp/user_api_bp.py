@@ -14,10 +14,6 @@ def routes_userAPI():
     if 'POST' == request.method:
         _jsonData = request.get_json()['userData']
         _flag, _retDict, _userId = userController.createAccount(_jsonData)
-        # if _userId:
-        #     session.clear()
-        #     session.permanent = True
-        #     session['user_id'] = _userId
 
         return jsonify(_retDict)
     elif 'DELETE' == request.method:  # restful->Delete user

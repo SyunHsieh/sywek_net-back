@@ -70,3 +70,18 @@ def loginUser(*args):
         'id': _user.id,
         'name': _user.name
     })
+
+
+def getUser(userId):
+    """
+    return true when user searching in sqlDB
+    return false user not exists
+    return type (flag , userInstance)
+    """
+
+    _user = User(userId, True)
+
+    if _user is None:
+        return (False, None)
+
+    return (True, _user)

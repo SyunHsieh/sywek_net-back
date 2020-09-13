@@ -44,39 +44,12 @@ def routes_article(articleId):
 
 
 def routes_postArticle():
-    _retData = {
-        'type': '',
-        'msg': '',
-        'articleId': '',
-
-    }
-    if g.user is None:
-        _retData['msg'] = 'Not log in.'
-        return jsonify(_retData)
-    # POST-> Create a new article.{article , articleStatus}
     if 'POST' == request.method:
-        _retData['type'] += 'edit-article-create'
-        _jsonData = request.get_json()
-        if not validateDict(_jsonData, ['article', 'articleStatus']):
-            _retData['msg'] = 'data invalid.'
-            return jsonify(_retData)
+        _articleData = request.get_json()
+        _flag, _retDict = articleController.postArticle(_articleData, g.userId)
+        return jsonify(_retDict)
 
-        _newArticle, _msg = Article.loadFromJson(
-            _jsonData.get('article'), True)
-        if _newArticle:
-            _newArticle.author = g.user
-            _newArticle.isOpened = False if not _jsonData.get(
-                'articleStatus') else _jsonData.get('articleStatus')
 
-            _flag, _msg = _newArticle.commit()
-            _retData['msg'] = _msg
-            if _flag:
-                _retData['articleId'] = _newArticle.id
-                _retData['articleStatus'] = _newArticle.isOpened
-        else:
-            _retData['msg'] = _msg
-
-        return jsonify(_retData)
 # @bp.route('/edit/api/<articleId>', methods=['GET', 'POST', 'DELETE','PATCH'])
 
 
@@ -89,203 +62,36 @@ def routes_editArticle(articleId):
     # PUT-> Update all data of the article.
     # PATCH ->  Update article status 'articleStatus'.
 
-    _retData = {
-        'type': 'edit-article',
-        'msg': '',
-        'articleId': -1,
-        'articleStatus': False,
-    }
-    if g.user is None:
-        _retData['msg'] = 'Not log in.'
-        return jsonify(_retData)
-
     if 'GET' == request.method:
-        _articleId = 0
-        try:
-            _articleId = int(articleId)
-        except ValueError:
-            _retData['msg'] = 'Parameters invalid.'
-            return jsonify(_retData)
 
-        _retData['articleId'] = _articleId
+        _flag, _retDict = articleController.fetchEditArticle(
+            articleId, g.userId)
+        return jsonify(_retDict)
 
-        # fetch new article with author
-        if _articleId == -999:
-            _retData['type'] += '-new-article'
-            _retData['msg'] = 'Successed'
-            _retData['article'] = Article.getEmptyArticleJson(g.user)
-
-        # get exist article.
-        else:
-            _retData['type'] += '-get-article'
-            _article = Article(_articleId)
-
-            if _article.isSearchingInDB:
-                if _article.author.id == g.user.id:
-                    _retData['msg'] = 'Successed'
-                    _retData['articleStatus'] = _article.isOpened
-                    _retData['article'] = _article.jsonify(g.user)
-                else:
-                    _retData['msg'] = 'Not owner.'
-
-            else:
-                _retData['msg'] = 'Article not exist.'
-
-        return jsonify(_retData)
     elif 'DELETE' == request.method:
-        _retData['type'] += '-delete'
-        _articleId = 0
-        try:
-            _articleId = int(articleId)
-        except ValueError:
-            _retData['msg'] = 'Parameters invalid.'
-            return jsonify(_retData)
-
-        _delArticle = Article(_articleId)
-        if _delArticle.id is None:
-            _retData['msg'] = 'Article not exist.'
-            return jsonify(_retData)
-        if _delArticle.author.id != g.user.id:
-            _retData['msg'] = 'Not owner.'
-            return jsonify(_retData)
-
-        _flag, _msg = _delArticle.deleteArticle(g.user)
-        _retData['articleId'] = _delArticle.id
-        # _retData['articleStatus'] = _delArticle.isOpened
-
-        if _flag:
-            _retData['msg'] = 'Successed'
-        else:
-            _retData['msg'] = _msg
-        return jsonify(_retData)
+        _flag, _retDict = articleController.deleteArticle(articleId, g.userId)
+        return jsonify(_retDict)
     elif 'PUT' == request.method:
-        _articleId = 0
-        try:
-            _articleId = int(articleId)
-        except ValueError:
-            _retData['msg'] = 'Parameters invalid.'
-            return jsonify(_retData)
-
-        _retData['type'] += '-update'
         _jsonData = request.get_json()
-
-        _articleJson = _jsonData.get('article')
-        _articleStatus = _jsonData.get('articleStatus')
-        if not _articleJson:
-            _retData['msg'] = 'Data invalid.'
-            return jsonify(_retData)
-
-        _article = Article(_articleId)
-        if _article.isSearchingInDB:
-            _retData['articleId'] = _article.id
-
-            if _article.author.id != g.user.id:
-                _retData['msg'] = 'Not owner.'
-                return jsonify(_retData)
-            else:
-                retArticle, _msg = Article.loadFromJson(
-                    _articleJson, True, _article)
-                _article.isOpened = _articleStatus
-                _article.lastEditDT = datetime.now()
-                _retData['msg'] = _msg
-
-                if retArticle:
-
-                    _flag, _msg = _article.commit()
-                    _retData['articleStatus'] = _article.isOpened
-                    _retData['msg'] = _msg
-                    if _flag:
-                        _retData['msg'] = 'Successed'
-        else:
-            _retData['msg'] = 'Article not exist.'
-
-        return jsonify(_retData)
+        _flag, _retDict = articleController.updateArticle(
+            articleId, _jsonData, g.userId)
+        return jsonify(_retDict)
     elif 'PATCH' == request.method:
-        _articleId = 0
-        try:
-            _articleId = int(articleId)
-        except ValueError:
-            _retData['msg'] = 'Parameters invalid.'
-            return jsonify(_retData)
+        _articleStatus = request.get_json().get('articleStatus')
+        _flag, _retDict = articleController.udpateArticleStatus(
+            articleId, _articleStatus, g.userId)
+        return jsonify(_retDict)
 
-        _retData['type'] += '-update-patch'
-        _jsonData = request.get_json()
-
-        _articleStatus = _jsonData.get('articleStatus')
-        if _articleStatus is None:
-            _retData['msg'] = 'Data invalid.'
-            return jsonify(_retData)
-
-        _article = Article(_articleId, True)
-        if _article.isSearchingInDB:
-            _retData['articleId'] = _article.id
-
-            if _article.author.id != g.user.id:
-                _retData['msg'] = 'Not owner.'
-                return jsonify(_retData)
-            else:
-                _article.isOpened = _articleStatus
-                _article.lastEditDT = datetime.now()
-
-                _flag, _msg = _article.commit()
-                _retData['articleStatus'] = _article.isOpened
-                _retData['msg'] = _msg
-                if _flag:
-                    _retData['msg'] = 'Successed'
-        else:
-            _retData['msg'] = 'Article not exist.'
-
-        return jsonify(_retData)
-        # elif _type == 'articleStatus':
-        #     _articleStatusJson = _jsonData.get('articleStatue')
-        #     if not _articleStatusJson:
-        #         _retData['msg'] = 'Data invalid.'
-        #         return jsonify(_retData)
-
-        #     _article = Article(_articleId, True)
-        #     if _article.isSearchingInDB:
-        #         _retData['articleId'] = _article.id
-        #         _retData['articleStatus'] = _articleStatusJson
-
-        #         if _article.author.id != g.user.id:
-        #             _retData['msg'] = 'Not owner.'
-        #             return jsonify(_retData)
-        #         else:
-        #             _article.isOpened = _articleStatusJson
-
-        #             _flag, _msg = _article.commit()
-        #             _retData['msg'] = _msg
-        #             if _flag:
-        #                 _retData['msg'] = 'Successed'
-        #     else:
-        #         _retData['msg'] = 'Article not exist.'
 # @bp.route('/article/articleInfo', methods=['GET'])
 
 
 def routes_articlesInfo():
-    # isOpened , article-title , article-postDT , article-headerImage , article-id ,
-    _retData = {
-        'type': 'get-articlesInfo',
-        'msg': '',
-    }
-    _count = 0
-    _offset = 0
-    try:
-        _count = int(request.args['count'])
-        _offset = int(request.args['offset'])
-    except ValueError:
-        _retData['msg'] = 'Parameters invalid.'
-        return jsonify(_retData)
 
     if 'GET' == request.method:
-        if not g.user:
-            _retData['msg'] = 'Not login.'
-        else:
-            _retData['articlesInfo'] = [{'id': art.id, 'isOpened': art.isOpened,
-                                         'articleHeader': art.header, 'headerImage': art.headerImage, 'postDT': art.postDT, 'lastEditDT': art.lastEditDT} for art in g.user.getArticlesInfo(_count, _offset)]
-            _retData['msg'] = 'Successed'
 
-        return jsonify(_retData)
+        _flag, _retDict = articleController.fetchEditArticlesInfo(
+            request.args['count'], request.args['offset'], g.userId)
+        return jsonify(_retDict)
 
 
 def routes_getRecommandArticlesInfo():
@@ -299,33 +105,11 @@ def routes_getRecommandArticlesInfo():
     }
     _maxReturnArticleCount = 5
     if 'GET' == request.method:
-        _forceRecommandIdList = [11, 12]
+        _fetchRules = {'forceRecommandIdList': [11, 12]}
         _retArticlesInfo = []
-
-        _articleList = Article.getArticleInfoFromIdList(_forceRecommandIdList)
-
-        for art in _articleList:
-            _retArticlesInfo.append(art)
-
-        # check or filter _articleList...
-        _restArticleCount = _maxReturnArticleCount - len(_retArticlesInfo)
-
-        _articleList = Article.getLatestArticleInfo(
-            _restArticleCount, [i.id for i in _retArticlesInfo])
-
-        for art in _articleList:
-            _retArticlesInfo.append(art)
-
-        _retData['_retArticlesInfo'] = [{'id': art.id, 'article': art.jsonify()}
-                                        for art in _retArticlesInfo]
-        return jsonify(_retData)
-
-        # _curDatetime = datetime.now()
-        # Check is articlesInfo need update.
-        # if _recommandArticlesInfo['expireDateTime'] <= _curDatetime:
-        #     _recommandArticlesInfo['fetchDateTime'] = dateTime
-        #     _recommandArticlesInfo['expireDateTime'] = _recommandArticlesRules['expireRules'](
-        #         _curDatetime)
+        _flag, _retDict = articleController.getRecommandArticlesInfo(
+            _maxReturnArticleCount, _fetchRules)
+        return jsonify(_retDict)
 
 
 routes.append(dict(
