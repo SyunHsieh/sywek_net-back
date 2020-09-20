@@ -11,12 +11,19 @@ class Enum_ResponseMsg(Enum):
     Successed = 'Successed',
     RequestDataInvalid = 'Request data is invalid.'
 
+    # User enum
+    UserSetFollowerFailed = 'Set follower failed.'
+    UserGetAuthorInfoFailed = 'Get author info failed (Author not exists or other failed occured).'
+    #   User_Profile Enum
+    UserProfileGetFailed = 'Get user profile failed'
+    UserProfileUpdateFailed = 'Update user profile failed'
+
     # Session enum
     SessionNotFound = 'Session not found.'
     SessionGetTokenFailed = 'Get token by session failed.'
 
     # Login enum
-    NotLogin = 'Not login',
+    NotLogin = 'Not login.',
     LoginAccountOrPasswordIsIncorrect = 'Account or password is incorrect',
 
     # Sign Up enum
@@ -44,6 +51,11 @@ class Enum_ResponseMsg(Enum):
 class Enum_ResponseType(Enum):
     # user
     UserRegister = 'user_register'
+    UserSetFollower = 'user_setfollower'
+    UserGetAuthorInfo = 'user_get_author_info'
+    # User_Info
+    UserProfileGet = "user_profile_get"
+    UserProfileUpdate = "user_profile_update"
 
     # session
     SessionLogout = 'session_log_out'

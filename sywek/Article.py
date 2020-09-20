@@ -63,14 +63,8 @@ class Article():
 
     @classmethod
     def getEmptyArticleJson(cls, author):
-        _readerLike = False
-        _readerFollowing = False
 
-        if author is not None:
-            # _readerLike = True if self.searchUserLikeArticle(author) else False
-            _readerFollowing = True if author.searchFollow(
-                author) else False
-
+        _retInfo = author.getAuthorInfo(author)
         _jsonArticle = {
             'articleFormatVersion': Article._articleFormatVersion,
 
@@ -86,15 +80,7 @@ class Article():
                 },
             },
 
-            'authorInfo': {
-                'authorName': author.name,
-                'authorPicture': author.userImage,
-                'links': author.socialInfo,
-            },
-            'readerInfo': {
-                'isFollowing': _readerFollowing,
-                'isSaveArticle': False,
-            },
+
 
             'sections': [{'contentElements': [{
                 'content': {
@@ -104,7 +90,8 @@ class Article():
             }, ]}],
 
         }
-
+        _jsonArticle['authorInfo'] = _retInfo['authorInfo']
+        _jsonArticle['readerInfo'] = _retInfo['readerInfo']
         return _jsonArticle
 
     @classmethod
@@ -314,14 +301,14 @@ class Article():
 
     def jsonify(self, reader=None):
 
-        _readerLike = False
-        _readerFollowing = False
+        # _readerLike = False
+        # _readerFollowing = False
 
-        if reader is not None:
-            _readerLike = True if self.searchUserLikeArticle(reader) else False
-            _readerFollowing = True if reader.searchFollow(
-                self.author) else False
-
+        # if reader is not None:
+        #     _readerLike = True if self.searchUserLikeArticle(reader) else False
+        #     _readerFollowing = True if reader.searchFollow(
+        #         self.author) else False
+        _retInfo = self.author.getAuthorInfo(reader)
         _jsonArticle = {
             'articleFormatVersion': Article._articleFormatVersion,
 
@@ -335,22 +322,15 @@ class Article():
                     'time': self.postDT.strftime("%H:%M"),
                     'GMT': 8,
                 },
+
             },
 
-            'authorInfo': {
-                'authorName': self.author.name,
-                'authorPicture': self.author.userImage,
-                'links': self.author.socialInfo,
-            },
-            'readerInfo': {
-                'isFollowing': _readerFollowing,
-                'isSaveArticle': _readerLike,
-            },
 
             'sections': self.content,
 
         }
-
+        _jsonArticle['authorInfo'] = _retInfo['authorInfo']
+        _jsonArticle['readerInfo'] = _retInfo['readerInfo']
         return _jsonArticle
 
     def deleteArticle(self, user):

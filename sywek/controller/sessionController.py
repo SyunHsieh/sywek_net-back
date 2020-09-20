@@ -46,7 +46,8 @@ def sessionLogin(loginData):
     # Login successed
     _retDict['msg'] = Enum_ResponseMsg.Successed.value
     _retDict['token'] = {
-        'name': _userInfo['name']
+        'name': _userInfo['name'],
+        'userImage': _userInfo['userImage']
     }
     return (True, _retDict, _userInfo['id'])
 
@@ -74,6 +75,7 @@ def sessionGetToken(userId):
 
     _retDict['msg'] = Enum_ResponseMsg.Successed.value
     _retDict['token'] = {
-        'name': _userInfo['name']
+        'name': _userInfo['name'],
+        'userImage': _userInfo['userImage']
     }
     return (True, _retDict)

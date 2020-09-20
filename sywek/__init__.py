@@ -1,9 +1,9 @@
-from flask import Flask, redirect, url_for, session, jsonify, request, g, render_template, send_from_directory
+from flask import Flask, redirect, send_file, url_for, session, jsonify, request, g, render_template, send_from_directory
 from flask_session import Session
 from .db import close_db
 # from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-
+from .controller import GCStorageController
 import os
 
 
@@ -53,10 +53,16 @@ def Create_app(test_config=None, renew_database=False):
         print(path)
         return send_from_directory('./dist/', path)
 
-    @app.route('/test/<postId>', methods=['GET', 'POST'])
-    def routes_apitetst(postId):
-        print(request.get_json())
-        return 'id'+postId
+    @app.route('/image/<path:path>')
+    def routs_image(path):
+        print("test : ", path)
+        _flag, _blobInfo = GCStorageController.downloadBlob(
+            'sywek_net_bucket', 'image/{}'.format(path))
+        if _flag:
+            return send_file(_blobInfo['data'], mimetype=_blobInfo['contentType'])
+        print('test2 : ', _flag, _blobInfo)
+        return None
+
     _registerBP(app)
 
     import sywek.db as sywekDb

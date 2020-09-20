@@ -4,6 +4,7 @@ import hashlib
 from sqlalchemy.orm import load_only
 import random
 import re
+from .GCStorage import GCStorage
 
 
 class User():
@@ -92,6 +93,22 @@ class User():
             return (False, 'Account is exist.')
 
         _db = get_db()
+
+        # # tempImageData
+        # _tempDataList = self.userImage.split(',')
+        # _contentType = _tempDataList[0].split(';')[0].split(':')[1]
+        # _base64Data = _tempDataList[1]
+        # _fileExtension = _contentType.split('/')[1]
+        # _filename = '/{}.{}'.format(self.name.replace(' ',
+        #                                               '_'), _fileExtension)
+
+        # self.userImage = _filename
+        # _uploadImgData = [{
+        #     'filename': _filename,
+        #     'data': _base64Data,
+        #     'contentType': _contentType
+        # }]
+
         self.mappingDataToSqlInstance()
 
         if self.isSearchingInDB == False:
@@ -99,7 +116,38 @@ class User():
 
         _db.session.commit()
         self._mappingParams()
+
+        # _flag = self._uploadImageAndRename(
+        #     _uploadImgData, '{}'.format(self.id))
+        # if not _flag:
+        #     return (False, 'upload image failed')
         return (True, 'Successed')
+
+    # def _uploadImageAndRename(self, imageDataList, filepathPrefix=None):
+    #     """
+    #     imageDataList = [
+    #         {
+    #             'filename': 'imagename.jpeg',
+    #             'data' : '...b64',
+    #             contentType:'image/jepg'
+    #         }...
+    #     ]
+    #     """
+    #     _storage = GCStorage()
+    #     if not _storage:
+    #         return False
+
+    #     _storage.setBucket('')
+
+    #     for item in imageDataList:
+    #         _fileStr = '' if filepathPrefix is None else filepathPrefix
+    #         _fileStr = _fileStr + item['filename']
+    #         _flag = _storage.uploadFromBase64(
+    #             _fileStr, item['contentType'], item['data'])
+    #         if not _flag:
+    #             return False
+
+    #     return True
 
     def setPasswordHashAndSalt(self, password):
         if not re.fullmatch(r'[A-Za-z0-9@#$%^&+=]{8,32}', password):
@@ -116,14 +164,16 @@ class User():
         self.passwordHash = sha512.hexdigest()
         return True
 
-    def getArticlesInfo(self, count=1, offset=0):
+    def getArticlesInfo(self, count=1, offset=0, isCheckPublish=False):
         from .Article import Article
         if count <= 0:
             return None
 
         _articles = self.rs_posts_query.options(
             load_only('id', 'author_id', 'header', 'secondHeader', 'headerImage', 'postDT', 'tags', 'likesCount', 'commentsCount'))\
-            .order_by(articles_table.postDT.desc()).limit(count).offset(offset).all()
+            .order_by(articles_table.postDT.desc()).limit(count).offset(offset).all() if not isCheckPublish else self.rs_posts_query.options(
+            load_only('id', 'author_id', 'header', 'secondHeader', 'headerImage', 'postDT', 'tags', 'likesCount', 'commentsCount'))\
+            .filter_by(isOpened=True).order_by(articles_table.postDT.desc()).limit(count).offset(offset).all()
         if _articles is not None:
             return [Article(loadInfo=True, sqlInstance=row) for row in _articles]
         else:
@@ -139,13 +189,12 @@ class User():
         return self.passwordHash == hashlib.sha512((password+self.salt).encode('utf-8')).hexdigest()
 
     def setFollower(self, targetFollower, followFlag):
-        _ret = {
-            'type': 'follower',
-            'currentStatus': None,
-            'msg': 'Failed'
-        }
+        """
+        return format => (flag , currentStatus)
+        """
+
         if not self.isSearchingInDB or not targetFollower.isSearchingInDB:
-            return _ret
+            return (False, None)
 
         _db = get_db()
         _fwRow = self.searchFollow(targetFollower)
@@ -158,8 +207,7 @@ class User():
                 targetFollower.mappingDataToSqlInstance()
                 _db.session.commit()
 
-            _ret['currentStatus'] = True
-            _ret['msg'] = 'Successed'
+            return (True, True)
         else:
             if _fwRow is not None:
                 _db.session.delete(_fwRow)
@@ -167,10 +215,7 @@ class User():
                 targetFollower.mappingDataToSqlInstance()
                 _db.session.commit()
 
-            _ret['currentStatus'] = False
-            _ret['msg'] = 'Successed'
-
-        return _ret
+            return (True, False)
 
     def _validateData(self):
         # account rules
@@ -180,6 +225,8 @@ class User():
         # image rules
         # name rules
         # return flase or true
+        if not self.userImage:
+            return False
         if not self.isInfoOnly:
             if not re.fullmatch(r'^\w+((-\w+)|(\.\w+))*\@[A-Za-z0-9]+((\.|-)[A-Za-z0-9]+)*\.[A-Za-z]+$', self.account) or \
                     len(self.passwordHash) != 128 or len(self.salt) != 32:
@@ -199,3 +246,25 @@ class User():
         if not re.fullmatch(r'[a-z0-9A-Z ]{3,64}', name):
             return False
         return True
+
+    def getAuthorInfo(self, reader=None):
+        _readerLike = False
+        _readerFollowing = False
+
+        if reader is not None:
+            # _readerLike = True if self.searchUserLikeArticle(reader) else False
+            _readerFollowing = True if reader.searchFollow(
+                self) else False
+        _retDict = {
+            'authorInfo': {
+                'authorName': self.name,
+                'authorPicture': self.userImage,
+                'links': self.socialInfo,
+                'authorId': self.id
+            },
+            'readerInfo': {
+                'isFollowing': _readerFollowing,
+
+            },
+        }
+        return _retDict

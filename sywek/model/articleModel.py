@@ -1,9 +1,108 @@
 from ..Article import Article
 from ..User import User
 from datetime import datetime
+from ..RandomString import RandomSelectString
+from ..base64DataSplit import base64DataSplit
+from ..model import GCStorageModel
 
 
-def searchArticleByUser(searchStr, searchTag, searchCount, searchOffset):
+def _uploadArticlesImageOnGCS(articleInstance, bucketname):
+    """
+    return True when full image upload successed
+    return Flase when image upload failed 
+    return format => (flag , uploadedBlobList )
+    """
+    _retBlobList = []
+    _bucketName = bucketname
+    _rnadomSelSample = '1234567890QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm'
+    _articleLayerOnePrefix = _articleImageBlobPrefix = 'image/article/' + \
+        RandomSelectString(_rnadomSelSample, 6)
+    _prefixStrCount = 6
+    _rerandomPrefixCount = 0
+    while GCStorageModel.isBlobExists(_bucketName, _articleLayerOnePrefix):
+        # get new blob prefix
+        _articleLayerOnePrefix = _articleImageBlobPrefix = 'image/article/' + \
+            RandomSelectString(_rnadomSelSample, _prefixStrCount)
+        _rerandomPrefixCount = _rerandomPrefixCount+1
+        if _rerandomPrefixCount == 3:
+            _rerandomPrefixCount = 0
+            _prefixStrCount = _prefixStrCount + 1
+
+    _articleImageBlobPrefix = _articleLayerOnePrefix+'/'+RandomSelectString(
+        "QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm", 3)+'_'
+
+    # upload article-header-image
+    # split base64str
+    if articleInstance.headerImage.startswith('image/article'):
+        # copy
+        _fileExtension = articleInstance.headerImage.split('.')[1]
+        _blobname = _articleImageBlobPrefix + \
+            'header.'+_fileExtension
+        _flag = GCStorageModel.copyBlob(
+            _bucketName, articleInstance.headerImage, _blobname)
+        if not _flag:
+            return (False, _retBlobList)
+        articleInstance.headerImage = _blobname
+    else:
+        _flag, _dataDict = base64DataSplit(articleInstance.headerImage)
+
+        if not _flag:
+            return (False, _retBlobList)
+
+        _fileExtension = _dataDict['contentType'].split('/')[1]
+        _blobname = _articleImageBlobPrefix+'header.'+_fileExtension
+        _uploadImageFlag, _retBlobName = GCStorageModel.uploadBlobFromBase64(
+            _bucketName, _blobname, _dataDict['data'], _dataDict['contentType'], True, 2)
+
+        if not _uploadImageFlag:
+            return (False, _retBlobList)
+
+        # append newbloblist and oldbloblist
+        _retBlobList.append(_retBlobName)
+        articleInstance.headerImage = _retBlobName
+
+    for sectionIndex, section in enumerate(articleInstance.content):
+        for contentEleIndex, contentEle in enumerate(section['contentElements']):
+            if contentEle['contentType'] == 'image':
+                # split base64str
+                # check url
+                if contentEle['content']['imageUrl'].startswith('image/article'):
+                    _fileExtension = contentEle['content']['imageUrl'].split('.')[
+                        1]
+                    _blobname = _articleImageBlobPrefix + \
+                        '{}_{}.'.format(
+                            sectionIndex, contentEleIndex)+_fileExtension
+                    _flag = GCStorageModel.copyBlob(
+                        _bucketName, contentEle['content']['imageUrl'], _blobname)
+                    if not _flag:
+                        return (False, _retBlobList)
+                    # append newbloblist and oldbloblist
+                    _retBlobList.append(_blobname)
+                    contentEle['content']['imageUrl'] = _blobname
+
+                else:
+                    _flag, _dataDict = base64DataSplit(
+                        contentEle['content']['imageUrl'])
+
+                    if not _flag:
+                        return (False, _retBlobList)
+
+                    _fileExtension = _dataDict['contentType'].split('/')[1]
+                    _blobname = _articleImageBlobPrefix + \
+                        '{}_{}.'.format(
+                            sectionIndex, contentEleIndex)+_fileExtension
+                    _uploadImageFlag, _retBlobName = GCStorageModel.uploadBlobFromBase64(
+                        _bucketName, _blobname, _dataDict['data'], _dataDict['contentType'], True, 2)
+                    if not _uploadImageFlag:
+                        return (False, _retBlobList)
+                    # append newbloblist and oldbloblist
+                    _retBlobList.append(_retBlobName)
+                    contentEle['content']['imageUrl'] = _retBlobName
+
+    return (True, _retBlobList)
+
+
+def searchArticle(searchStr, searchTag, searchCount, searchOffset):
     """
     Return articles' info when match the searchRules
     Return None when not match.
@@ -63,6 +162,14 @@ def postArticle(article, articleStatus, postUserInstance):
 
     _article.author = postUserInstance
     _article.isOpened = articleStatus
+    # upload article's images
+    _flag, _newBlobList = _uploadArticlesImageOnGCS(
+        _article, 'sywek_net_bucket')
+
+    if not _flag:
+        for blob in _newBlobList:
+            GCStorageModel.deleteBlob('sywek_net_bucket', blob)
+            return (False, None, None)
 
     _flag, *_ = _article.commit()
 
@@ -80,7 +187,7 @@ def getEmptyArticleJson(userInstance):
     return Article.getEmptyArticleJson(userInstance)
 
 
-def fetchUserArticlesInfo(userInstance, count, offset):
+def fetchUserArticlesInfo(userInstance, count, offset, isPublishOnly=False):
     """
     return true when fetch own articles' info successed
     return false when fetch own articles' info failed
@@ -97,7 +204,7 @@ def fetchUserArticlesInfo(userInstance, count, offset):
         'headerImage': art.headerImage,
         'postDT': art.postDT,
         'lastEditDT': art.lastEditDT
-    } for art in userInstance.getArticlesInfo(count, offset)]
+    } for art in userInstance.getArticlesInfo(count, offset, isPublishOnly)]
 
     return (True, _articlesInfo)
 
@@ -107,14 +214,28 @@ def deleteArticle(articleId, userInstance):
     return true when delete article successed.
     return false when delete article failed
     """
-
-    _article = Article(articleId, True)
+    _bucketName = 'sywek_net_bucket'
+    _article = Article(articleId)
 
     # check article exists and the client is article owner
     if _article is None or _article.author.id != userInstance.id:
         return False
 
+    # collect old article blob
+    _oldArticlesBlobList = []
+
+    _oldArticlesBlobList.append(_article.headerImage)
+
+    for section in _article.content:
+        for contentEle in section['contentElements']:
+            if contentEle['contentType'] == 'image':
+                _oldArticlesBlobList.append(
+                    contentEle['content']['imageUrl'])
+
     _flag = _article.deleteArticle(userInstance)
+    if _flag:
+        for blob in _oldArticlesBlobList:
+            GCStorageModel.deleteBlob(_bucketName, blob)
     return _flag
 
 
@@ -132,12 +253,28 @@ def updateArticle(articleId, articleJson, articleStatus, userInstance):
     function parameters
     *articleJson : None means update articleStatus only
     """
+    _bucketName = 'sywek_net_bucket'
     _loadInfoFlag = False if articleJson is not None else True
     _article = Article(articleId, _loadInfoFlag)
+
+    # collect old article blob
+    _oldArticlesBlobList = []
+    if not _loadInfoFlag:
+        _oldArticlesBlobList.append(_article.headerImage)
+
+        for section in _article.content:
+            for contentEle in section['contentElements']:
+                if contentEle['contentType'] == 'image':
+                    _oldArticlesBlobList.append(
+                        contentEle['content']['imageUrl'])
 
     # check the article exists and the client isarticle owner
     if not _article or _article.author.id != userInstance.id:
         return (False, None)
+
+    # setArticleStatus and article last-edit-datetime
+    _article.isOpened = articleStatus
+    _article.lastEditDT = datetime.now()
 
     # load article by articleJson and put it in the _article object
     if not _loadInfoFlag:
@@ -147,15 +284,23 @@ def updateArticle(articleId, articleJson, articleStatus, userInstance):
         if not _retArticle:
             return (False, None)
 
-    # setArticleStatus and article last-edit-datetime
-    _article.isOpened = articleStatus
-    _article.lastEditDT = datetime.now()
+        # upload new article on GCS
+        _flag, _retBlobList = _uploadArticlesImageOnGCS(
+            _retArticle, _bucketName)
+
+        if not _flag:
+            # delete uploaded blob and return
+            for blob in _retBlobList:
+                GCStorageModel.deleteBlob(_bucketName, blob)
+                return (False, None)
 
     _flag, *_ = _article.commit()
 
     if not _flag:
         return (False, None)
 
+    for blob in _oldArticlesBlobList:
+        GCStorageModel.deleteBlob(_bucketName, blob)
     return (True, {
         'id': _article.id,
         'articleStatus': _article.isOpened

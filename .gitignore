@@ -4,3 +4,4 @@ instance/
 *egg-info/
 *pytest/
 config.py
+sywek-net-web-key.json

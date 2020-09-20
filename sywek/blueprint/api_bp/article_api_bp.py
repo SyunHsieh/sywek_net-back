@@ -38,7 +38,8 @@ def routes_serachingArticlesInfo():
 
 def routes_article(articleId):
     if 'GET' == request.method:
-        _flag, _retDict = articleController.fetchArticleByArticleId(articleId)
+        _flag, _retDict = articleController.fetchArticleByArticleId(
+            articleId, g.userId)
         return jsonify(_retDict)
 # '/edit/api , methods=['POST']
 
@@ -82,15 +83,25 @@ def routes_editArticle(articleId):
             articleId, _articleStatus, g.userId)
         return jsonify(_retDict)
 
-# @bp.route('/article/articleInfo', methods=['GET'])
+# @bp.route('/article/articleInfo', methods=['GET']) return own articles info
 
 
 def routes_articlesInfo():
 
     if 'GET' == request.method:
 
-        _flag, _retDict = articleController.fetchEditArticlesInfo(
-            request.args['count'], request.args['offset'], g.userId)
+        _flag, _retDict = articleController.fetchArticlesInfo(
+            request.args['count'], request.args['offset'], g.userId, True, False)
+        return jsonify(_retDict)
+
+# get target user articles' info.
+
+
+def routes_targetArticlesInfo(authorId):
+    if 'GET' == request.method:
+
+        _flag, _retDict = articleController.fetchArticlesInfo(
+            request.args['count'], request.args['offset'], authorId, False, True)
         return jsonify(_retDict)
 
 
@@ -125,6 +136,11 @@ routes.append(dict(
 routes.append(dict(
     rule='/article/articlesInfo',
     view_func=routes_articlesInfo,
+    options=dict(methods=['GET'])
+))
+routes.append(dict(
+    rule='/article/articlesInfo/author/<authorId>',
+    view_func=routes_targetArticlesInfo,
     options=dict(methods=['GET'])
 ))
 routes.append(dict(

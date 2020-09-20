@@ -44,7 +44,7 @@ def searchArticle(searchStr, searchTag, searchCount, searchOffset):
     _retDict['searchRule']['searchOffset'] = _searchOffset
 
     # Search articles' info
-    _retArticlesInfo = articleModel.searchArticleByUser(
+    _retArticlesInfo = articleModel.searchArticle(
         _searchStr, _searchTag, _searchCount, _searchOffset)
     _retDict['articlesInfo'] = _retArticlesInfo
     _retDict['msg'] = Enum_ResponseMsg.Successed.value
@@ -52,7 +52,7 @@ def searchArticle(searchStr, searchTag, searchCount, searchOffset):
     return(True, _retDict)
 
 
-def fetchArticleByArticleId(articleId):
+def fetchArticleByArticleId(articleId, userId):
     """
     Return True when fetch successed 
     Return False when fetch article failed (article not found or other error)
@@ -71,7 +71,8 @@ def fetchArticleByArticleId(articleId):
         _retDict['msg'] = Enum_ResponseMsg.RequestDataInvalid.value
         return (False, _retDict)
 
-    _flag, _articleRef = articleModel.fetchArticleJsonAndInfo(_articleId)
+    _flag, _articleRef = articleModel.fetchArticleJsonAndInfo(
+        _articleId)
 
     # check article is not private and exists.
     if _flag == False:
@@ -82,7 +83,8 @@ def fetchArticleByArticleId(articleId):
         return(False, _retDict)
 
     # jsonify article and append
-    _retDict['article'] = _articleRef['articleJsonifyFunc']()
+    _flag, _user = userModel.getUser(userId)
+    _retDict['article'] = _articleRef['articleJsonifyFunc'](_user)
     _retDict['msg'] = Enum_ResponseMsg.Successed.value
     return (True, _retDict)
 
@@ -184,7 +186,7 @@ def fetchEditArticle(articleId, userId):
         return (False, _retDict)
 
     # append article data in _retDict and set message
-    _retDict['article'] = _articleRef['articleJsonifyFunc']()
+    _retDict['article'] = _articleRef['articleJsonifyFunc'](_user)
     _retDict['articleStatus'] = _articleRef['articleStatus']
     _retDict['articleId'] = _articleRef['articleId']
     _retDict['msg'] = Enum_ResponseMsg.Successed.value
@@ -192,7 +194,7 @@ def fetchEditArticle(articleId, userId):
     return (True, _retDict)
 
 
-def fetchEditArticlesInfo(count, offset, userId):
+def fetchArticlesInfo(count, offset, userId, isCheckLogin=True, isPublishOnly=False):
     """
     return articles' info 
     return True when fetch successed
@@ -207,6 +209,7 @@ def fetchEditArticlesInfo(count, offset, userId):
     count : Fetch articles' info count
     offset : Fetch articles' info offset 
     userId : articles' author id
+    isCheckOwner : True : will check user as userId are those articles owner 
     """
     _retDict = getResponseBaseDict()
     _retDict['type'] = Enum_ResponseType.articlesInfoSelfFetch.value
@@ -239,12 +242,15 @@ def fetchEditArticlesInfo(count, offset, userId):
     _flag, _user = userModel.getUser(userId)
 
     if not _flag:
-        _retDict['msg'] = Enum_ResponseMsg.SessionNotFound.value
+        if isCheckLogin:
+            _retDict['msg'] = Enum_ResponseMsg.SessionNotFound.value
+        else:
+            _retDict['msg'] = Enum_ResponseMsg.ArticlesInfoFetchFailed.value
         return (False, _retDict)
 
     # Fetch user's articles info by count offset and userInstance
     _flag, _articlesInfo = articleModel.fetchUserArticlesInfo(
-        _user, _count, _offset)
+        _user, _count, _offset, isPublishOnly)
 
     if not _flag:
         _retDict['msg'] = Enum_ResponseMsg.ArticlesInfoFetchFailed.value

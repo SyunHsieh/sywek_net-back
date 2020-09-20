@@ -1,4 +1,6 @@
 from ..User import User
+from . import GCStorageModel
+from ..base64DataSplit import base64DataSplit
 
 
 def isAccountExists(_account):
@@ -31,10 +33,32 @@ def createUser(_account, _password, _name, _socialMediaInfo, _userImage):
     _newUser.account = _account
     _newUser.name = _name
     _newUser.socialInfo = _socialMediaInfo
-    _newUser.userImage = _userImage
+
+    # upload image on GCS using GCStorageModel
+    _bucketName = 'sywek_net_bucket'
+    _flag, _dataDict = base64DataSplit(_userImage)
+    # check split data successed
+    if not _flag:
+        return False
+
+    _fileExtension = _dataDict['contentType'].split('/')[1]
+
+    _blobname = 'image/user/{}.{}'.format(
+        _name.replace(' ', '_'), _fileExtension)
+
+    _uploadImageFlag, _retBlobName = GCStorageModel.uploadBlobFromBase64(
+        _bucketName, _blobname, _dataDict['data'], _dataDict['contentType'], True, 2)
+
+    if not _uploadImageFlag:
+        return False
+
+    _newUser.userImage = _retBlobName
 
     _flag, _msg = _newUser.commit()
 
+    if not _flag:
+        # if create user failed then delete the uploaded image
+        GCStorageModel.deleteBlob(_bucketName, _retBlobName)
     return (_flag, _newUser.id)
 
 
@@ -68,7 +92,8 @@ def loginUser(*args):
 
     return(True, {
         'id': _user.id,
-        'name': _user.name
+        'name': _user.name,
+        'userImage': _user.userImage
     })
 
 
@@ -78,10 +103,122 @@ def getUser(userId):
     return false user not exists
     return type (flag , userInstance)
     """
-
+    if userId is None:
+        return (False, None)
     _user = User(userId, True)
 
     if _user is None:
         return (False, None)
 
     return (True, _user)
+
+
+def setFollower(user, targetUserId, followStatus):
+    """
+    return true when set follower successed
+    retrun false when set follower failed(Target user not exists)
+    return format =>(flag , currnetStatus)
+    """
+
+    _targetUser = User(targetUserId, True)
+
+    if _targetUser is None:
+        return (False, None)
+
+    _flag, _curStatus = user.setFollower(_targetUser, followStatus)
+    return (_flag, _curStatus)
+
+
+def getTargetUserInfo(user, targetUserId):
+    """
+    return True when get target user info successed.
+    return False when get target user info failed (maybe target user not exists).
+    return format => (flag , userInfoDict)
+    userInfoDict:{
+        'authorInfo' : {
+            'authorId' : author id,
+            'authorName' : author name,
+            'authorPicture' : author image 
+            'links' :author social media links
+        },
+        'readerInfo':{
+            'isFollowing' : is user followed the (target) user
+
+        }
+    }
+    """
+    _targetUser = User(targetUserId, True)
+
+    if _targetUser is None:
+        return (False, None)
+
+    return (True, _targetUser.getAuthorInfo(user))
+
+
+def getUserProfile(user):
+    """
+        return Ture when successed
+        return False when failed
+
+        return format => (flag , userProfileict)
+    userProfileict = {
+        'id' : ,
+        'name':,
+        'socialInfo':,
+        'userImage':
+    }
+    """
+    if not user:
+        return (False, None)
+
+    _userProfileDict = {
+
+    }
+    _userProfileDict['id'] = user.id
+    _userProfileDict['name'] = user.name
+    _userProfileDict['socialInfo'] = user.socialInfo
+    _userProfileDict['userImage'] = user.userImage
+
+    return(True, _userProfileDict)
+
+
+def updateUserProfile(user, userProfileData):
+    """
+
+    """
+
+    if not user:
+        return False
+
+    # upload image
+    # upload image on GCS using GCStorageModel
+    _oldUserImage = user.userImage
+    _bucketName = 'sywek_net_bucket'
+    _flag, _dataDict = base64DataSplit(userProfileData["userImage"])
+    # check split data successed
+    if not _flag:
+        return False
+
+    _fileExtension = _dataDict['contentType'].split('/')[1]
+
+    _blobname = 'image/user/{}.{}'.format(
+        user.name.replace(' ', '_'), _fileExtension)
+
+    _uploadImageFlag, _retBlobName = GCStorageModel.uploadBlobFromBase64(
+        _bucketName, _blobname, _dataDict['data'], _dataDict['contentType'], True, 2)
+
+    if not _uploadImageFlag:
+        return False
+    # udpate user and commit it
+    user.socialInfo = userProfileData["socialInfo"]
+    user.userImage = _retBlobName
+
+    _flag, *_ = user.commit()
+
+    if not _flag:
+        # if update profile failed then delete new header image
+        GCStorageModel.deleteBlob(_bucketName, _blobname)
+        return False
+    # delete old image when successed
+    GCStorageModel.deleteBlob(_bucketName, _oldUserImage)
+    return True

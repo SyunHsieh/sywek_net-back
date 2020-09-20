@@ -23,7 +23,40 @@ def routes_userAPI():
 
 # post-method delete-method
 def routes_setUserFollow(targetUserId):
-    pass
+    _followerStatus = False
+
+    if 'POST' == request.method:
+        _followerStatus = True
+    elif 'DELETE' == request.method:
+        _followerStatus = False
+
+    _flag, _retDict = userController.setFollower(
+        g.userId, targetUserId, _followerStatus)
+
+    return jsonify(_retDict)
+
+# get method
+
+
+def routes_getAuthorInfo(targetUserId):
+    if 'GET' == request.method:
+        _flag, _retDict = userController.getAuthorInfo(g.userId, targetUserId)
+
+        return jsonify(_retDict)
+
+# GET POST
+
+
+def routes_editUserProfile():
+    if 'GET' == request.method:
+        _flag, _retDict = userController.getUserProfile(g.userId)
+
+    elif 'POST' == request.method:
+        _requestData = request.get_json()
+        _flag, _retDict = userController.udpateUserProfile(
+            g.userId, _requestData['userProfileData'])
+
+    return jsonify(_retDict)
 
 
 routes.append(dict(
@@ -33,11 +66,22 @@ routes.append(dict(
 ))
 
 routes.append(dict(
-    rule='/user/follow/<userId>',
+    rule='/user/follow/<targetUserId>',
     view_func=routes_setUserFollow,
     options=dict(methods=['POST', 'DELETE'])
 ))
 
+routes.append(dict(
+    rule='/user/info/<targetUserId>',
+    view_func=routes_getAuthorInfo,
+    options=dict(methods=['GET'])
+))
+
+routes.append(dict(
+    rule='/user/profile',
+    view_func=routes_editUserProfile,
+    options=dict(methods=['GET', 'POST'])
+))
 
 # @ bp.before_app_request
 
