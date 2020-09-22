@@ -50,7 +50,7 @@ def Create_app(test_config=None, renew_database=False):
 
     @app.route('/<path:path>')
     def routes_jsFile(path):
-        print(path)
+
         return send_from_directory('./dist/', path)
 
     @app.route('/image/<path:path>')
@@ -87,6 +87,8 @@ def Create_app(test_config=None, renew_database=False):
 
     @app.errorhandler(Exception)
     def flask_errorhandler(e):
+        with open('./log.text', 'wr') as f:
+            f.writelines(e)
         return 'error!!!'
     # from flask_talisman import Talisman
     # Talisman(app)
