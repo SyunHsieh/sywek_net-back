@@ -13,7 +13,7 @@ class Article():
     @classmethod
     def searchArticle(cls, searchingStr, searchingTag, searchCount=10, searchOffset=0):
         _sqlBase = "SELECT distinct art.id , art.\"postDT\"  FROM articles_table as art, json_array_elements(art.content) as ctes , json_array_elements(ctes -> 'contentElements') as cts WHERE art.\"isOpened\" = TRUE "
-        print(_sqlBase)
+        # print(_sqlBase)
         _baseStr = "(cts -> 'content' ->> 'text' LIKE '%{0}%' OR LOWER(art.header) LIKE '%{0}%' OR LOWER(art.\"secondHeader\") LIKE '%{0}%')"
         _baseTagStr = "'{0}' ILIKE ANY(art.tags)"
 
@@ -36,7 +36,7 @@ class Article():
 
         _list = articles_table.query.options(load_only(
             'id', 'author_id', 'header', 'secondHeader', 'headerImage', 'postDT', 'lastEditDT', 'tags', 'likesCount', 'isOpened', 'commentsCount')).from_statement(text(_sqlBase))
-        print('condition : ', _list)
+        # print('condition : ', _list)
         _list = _list.all()
         _articles_Info = [cls(loadInfo=True, sqlInstance=item)
                           for item in _list]

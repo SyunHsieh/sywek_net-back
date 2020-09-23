@@ -1,0 +1,7 @@
+instance/
+.vscode/
+__pycache__/
+*egg
+venv
+.coverage
+.gitignore

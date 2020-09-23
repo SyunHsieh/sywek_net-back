@@ -5,3 +5,4 @@ instance/
 *pytest/
 config.py
 sywek-net-web-key.json
+app.yaml

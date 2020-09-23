@@ -9,7 +9,7 @@ routes = (article_routes+session_routes+user_routes)
 
 
 def tear_down_function(e=None):
-    print('teardown!!!!!!')
+    # print('teardown!!!!!!')
     g.db.session.close()
     close_db()
 

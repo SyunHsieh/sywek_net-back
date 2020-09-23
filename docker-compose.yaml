@@ -1,0 +1,64 @@
+version: '3.4'
+
+networks: #docker network create --driver bridge --subnet 172.20.0.0/16 myBridge
+    myBridge:
+        driver: bridge
+        ipam: 
+            config: [
+                {
+                    subnet: 172.20.0.0/16
+                }
+            ]
+
+volumes: #using exists named volume "sywek-pg"
+    sywek-pg:
+        external: true
+
+
+
+services: #create container
+       
+    pg:
+        container_name: pg
+        restart: "always"
+        hostname: pg.mydomain
+        privileged: true
+        volumes: 
+            - sywek-pg:/var/lib/postgresql/data #if want to using exists volume  , should setting the previous volumes setting and set external = true.
+
+        image: postgres:latest #base image and tag
+        environment: 
+            - POSTGRES_PASSWORD=postgres
+        
+        ports: #reflection port
+          - "5432:5432"
+        
+        networks: 
+            myBridge: #using network = myBridge
+                aliases:  #network aliases , can using like $ ping <aliase>
+                    - pg-network
+               # ipv4_address: 172.20.0.100   #assign a static ip address.
+
+    sywek-web:
+        container_name: sywek-web
+        restart: "always"
+            
+        networks: # set container network on myBridge and auto assign ipaddress
+            myBridge:
+               
+        depends_on:       
+            - pg #waitting container "pg" in running mode.
+        #name: sywek-web
+        #build: .     #if want to build every times call docker-compose up then use it.
+        image: sywek-web:1.0.2
+        ports: 
+            - "5000:5000"
+            - "5678:5678"
+        
+        #wait-for-it is linux tool ,should install using $sudo apt-get install wait-for-it .
+        #wait-for-it will check the port pg-network:5432 status then do next commands.
+        command: bash -c "wait-for-it pg-network:5432 -t 30  ;
+         python3 -m ptvsd --host 0.0.0.0 --port 5678 --wait --multiprocess -m flask run -h 0.0.0.0 -p 5000 ;
+          gunicorn -b 0.0.0.0:5000 main:app"
+        
+        

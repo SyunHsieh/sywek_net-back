@@ -55,12 +55,12 @@ def Create_app(test_config=None, renew_database=False):
 
     @app.route('/image/<path:path>')
     def routs_image(path):
-        print("test : ", path)
+
         _flag, _blobInfo = GCStorageController.downloadBlob(
             'sywek_net_bucket', 'image/{}'.format(path))
         if _flag:
             return send_file(_blobInfo['data'], mimetype=_blobInfo['contentType'])
-        print('test2 : ', _flag, _blobInfo)
+
         return None
 
     _registerBP(app)
@@ -87,8 +87,6 @@ def Create_app(test_config=None, renew_database=False):
 
     @app.errorhandler(Exception)
     def flask_errorhandler(e):
-        with open('./log.text', 'wr') as f:
-            f.writelines(e)
         return 'error!!!'
     # from flask_talisman import Talisman
     # Talisman(app)

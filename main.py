@@ -22,19 +22,22 @@ def load_env_var(mode):
             for k, v in envDir.items():
                 os.environ[k] = v
     else:
-        print('Env file not exist : ', filename)
 
+        pass
+        # print('Env file not exist : ', filename)
 
-# if len(sys.argv) >= 1:
-#   load_env_var(mode = sys.argv[1])
-# else:
-#   load_env_var(mode = 'prod')
-# ptvsd.enable_attach()
-#load_env_var(mode = 'dev')
+        # if len(sys.argv) >= 1:
+        #   load_env_var(mode = sys.argv[1])
+        # else:
+        #   load_env_var(mode = 'prod')
+        # ptvsd.enable_attach()
+        #load_env_var(mode = 'dev')
 app = Create_app()
 
 
 if __name__ == '__main__':
-    # app.run(host='0.0.0.0',port=80)
-
-    app.run(debug=True)
+    if app.env == 'development':
+        app.run(debug=True)
+    else:
+        pass
+        # app.run(host='0.0.0.0', port=80)
