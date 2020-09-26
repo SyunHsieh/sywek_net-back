@@ -16,11 +16,10 @@ automatic_scaling:
 #  name: "projects/sywek-website/locations/asia-northeast2/connectors/sywek-serverlessvpc-tokyo"
 
 handlers:
-- url: /.*
-  secure: always
-  redirect_http_response_code: 301
-  script: auto
-  
+  - url: /.*
+    secure: always
+    redirect_http_response_code: 301
+    script: auto
 #beta_settings:#public cloud sql
 #  cloud_sql_instances: flask-web-278815:asia-east1:syun-postgre-0917
 

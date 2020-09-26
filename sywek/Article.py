@@ -126,6 +126,13 @@ class Article():
                 '<[^>]*>', '', el['content']['title']))
             el['content']['code'] = [
                 re.sub('(?:\r\n|\r|\n)', '', codeStr) for codeStr in el['content']['code']]
+        elif _elType == 'hyperlink':
+            if not validateDict(el['content'], ['url', 'text']):
+                return False
+            if not el['content']['url'].startswith('https://') and not el['content']['url'].startswith('http://'):
+                return False
+            re.sub('(?:\r\n|\r|\n)', '', re.sub(
+                '<[^>]*>', '', el['content']['text']))
         else:  # means invalid contentType.
             return False
         return True
