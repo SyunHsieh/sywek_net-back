@@ -78,8 +78,8 @@ def Create_app(test_config=None, renew_database=False):
     # db = SQLAlchemy(app)
     session = Session(app)
 
-    session.app.session_interface.db.drop_all()
-    session.app.session_interface.db.create_all()
+    # session.app.session_interface.db.drop_all()
+    # session.app.session_interface.db.create_all()
 
     @app.teardown_request
     def teardown_app_request(e=None):
